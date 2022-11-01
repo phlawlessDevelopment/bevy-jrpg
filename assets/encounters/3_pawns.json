@@ -1,0 +1,34 @@
+[
+    {
+      "name": "pawn 1",
+      "sprite": "pawn",
+      "max_hp": 10,
+      "hp": 10,
+      "dmg": 10,
+      "dmg_type": "P",
+      "weaknesses": ["B"],
+      "resistances": ["S"]
+    },
+    {
+      "name": "pawn 2",
+      "sprite": "pawn",
+      "max_hp": 10,
+      "hp": 10,
+      "dmg": 10,
+      "dmg_type": "P",
+      "weaknesses": ["B"],
+      "resistances": ["S"]
+    },
+    {
+      "name": "pawn 3",
+      "sprite": "pawn",
+      "max_hp": 10,
+      "hp": 10,
+      "dmg": 10,
+      "dmg_type": "P",
+      "weaknesses": ["B"],
+      "resistances": ["S"]
+    }
+    
+  ]
+  

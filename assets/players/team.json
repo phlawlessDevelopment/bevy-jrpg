@@ -1,0 +1,32 @@
+[
+  {
+    "name": "phalyce",
+    "sprite": "bishop",
+    "max_hp": 10,
+    "hp": 10,
+    "dmg": 10,
+    "dmg_type": "P",
+    "weaknesses": ["B"],
+    "resistances": ["S"]
+  },
+  {
+    "name": "billy",
+    "sprite": "rook",
+    "max_hp": 10,
+    "hp": 10,
+    "dmg": 10,
+    "dmg_type": "P",
+    "weaknesses": ["B"],
+    "resistances": ["S"]
+  },
+  {
+    "name": "amy",
+    "sprite": "knight",
+    "max_hp": 10,
+    "hp": 10,
+    "dmg": 10,
+    "dmg_type": "P",
+    "weaknesses": ["B"],
+    "resistances": ["S"]
+  }
+]
