@@ -4,7 +4,7 @@
     "sprite": "bishop",
     "max_hp": 10,
     "hp": 10,
-    "dmg": 10,
+    "dmg": 1,
     "dmg_type": "P",
     "weaknesses": ["B"],
     "resistances": ["S"]
@@ -14,7 +14,7 @@
     "sprite": "rook",
     "max_hp": 10,
     "hp": 10,
-    "dmg": 10,
+    "dmg": 1,
     "dmg_type": "P",
     "weaknesses": ["B"],
     "resistances": ["S"]
@@ -24,7 +24,7 @@
     "sprite": "knight",
     "max_hp": 10,
     "hp": 10,
-    "dmg": 10,
+    "dmg": 1,
     "dmg_type": "P",
     "weaknesses": ["B"],
     "resistances": ["S"]

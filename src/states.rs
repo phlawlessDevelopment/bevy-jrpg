@@ -2,6 +2,9 @@
 pub enum Views {
     Combat,
 }
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
 pub enum CombatPhases {
-    Setup,
+    SelectAction,
+    SelectActive,
+    Enemy,
 }
