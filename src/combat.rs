@@ -8,7 +8,7 @@ use crate::{
     enemy::Enemy,
     player::Player,
     save_load::{load_units, UnitJson},
-    states::CombatPhases,
+    states::{Views, CombatPhases},
 };
 
 pub struct CombatPlugin;
@@ -105,37 +105,67 @@ fn move_highlight_to_active(
     active_q: Query<&Transform, (With<Active>, Without<Highlight>)>,
     mut phase: ResMut<State<CombatPhases>>,
 ) {
-    if active_q.is_empty() && phase.set(CombatPhases::SelectAction).is_ok() {}
+    if active_q.is_empty() && phase.overwrite_set(CombatPhases::SelectAction).is_ok() {}
     let mut highlight = highlight_q.single_mut();
-    if let Some(active) = active_q.iter().next(){
-
+    if let Some(active) = active_q.iter().next() {
         highlight.translation = active.translation;
-        if phase.set(CombatPhases::SelectAction).is_ok() {}
+        if phase.overwrite_set(CombatPhases::SelectAction).is_ok() {}
     }
 }
 
 fn set_random_active_unit(
     mut commands: Commands,
     player_units: Query<(Entity, &AttackSend), With<Player>>,
-    mut phase: ResMut<State<CombatPhases>>,
 ) {
     let mut rng = rand::thread_rng();
     let player = player_units
-    .iter()
-    .filter(|(_e, s)| !s.used)
-    .choose(&mut rng);
-    match player {
-        Some((e, _s)) => {
-            commands.entity(e).insert(Active);
-        }
-        None => {
-            phase.set(CombatPhases::Enemy)();
-        }
+        .iter()
+        .filter(|(_e, s)| !s.used)
+        .choose(&mut rng);
+    if let Some((e, _s)) = player {
+        commands.entity(e).insert(Active);
     }
 }
+
+fn check_all_acted(
+    player_units: Query<&AttackSend, With<Player>>,
+    mut phase: ResMut<State<CombatPhases>>,
+) {
+    if player_units
+        .iter()
+        .filter(|s| !s.used)
+        .peekable()
+        .peek()
+        .is_none()
+        && phase.overwrite_set(CombatPhases::Enemy).is_ok()
+    {}
+}
+fn check_all_dead(
+    player_units: Query<&AttackSend, (With<Player>, Without<Enemy>)>,
+    enemy_units: Query<&AttackSend, (With<Enemy>, Without<Player>)>,
+    mut phase: ResMut<State<CombatPhases>>,
+) {
+    if player_units.iter().len() == 0 && phase.overwrite_set(CombatPhases::EnemyWins).is_ok() {
+    } else if enemy_units.iter().len() == 0 && phase.overwrite_set(CombatPhases::PlayerWins).is_ok() {
+    }
+}
+
+fn end_encounter() {
+    println!("Encounter over");
+}
+
+fn player_wins() {
+    println!("Player wins");
+}
+
+fn enemy_wins() {
+    println!("Enemy wins");
+}
+
 fn remove_active_unit(mut commands: Commands, active: Query<Entity, With<Active>>) {
-    let a = active.single();
-    commands.entity(a).remove::<Active>();
+    if let Some(a) = active.iter().next() {
+        commands.entity(a).remove::<Active>();
+    }
 }
 
 fn listen_for_input(
@@ -166,7 +196,7 @@ fn listen_for_input(
                 .iter()
                 .find(|(_e, t)| t.translation.distance(world_pos) <= 32.0)
             {
-                if !active.is_empty(){
+                if !active.is_empty() {
                     let send = active.single();
                     combat_event.send(CombatEvent { send, receive });
                 }
@@ -208,13 +238,13 @@ fn read_events(
                 println!("dead");
             }
             s.used = true;
-            if phase.set(CombatPhases::SelectActive).is_ok() {}
+            if phase.overwrite_set(CombatPhases::SelectActive).is_ok() {}
         }
     }
 }
 
-fn clear_acted(mut sends: Query<&mut AttackSend>){
-    for mut send in sends.iter_mut(){
+fn clear_acted(mut sends: Query<&mut AttackSend>) {
+    for mut send in sends.iter_mut() {
         send.used = false;
     }
 }
@@ -227,10 +257,11 @@ fn do_enemy_turn(
 ) {
     let mut rng = rand::thread_rng();
     for send in enemies.iter() {
-        let receive = players.iter().choose(&mut rng).unwrap();
-        combat_event.send(CombatEvent { send, receive });
+        if let Some(receive) = players.iter().choose(&mut rng) {
+            combat_event.send(CombatEvent { send, receive });
+        }
     }
-    if phase.set(CombatPhases::SelectActive).is_ok() {}
+    if phase.overwrite_set(CombatPhases::SelectActive).is_ok(){}
 }
 
 fn spawn_teams(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -239,6 +270,13 @@ fn spawn_teams(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let enemies = load_units("assets/encounters/3_pawns.json");
     spawn_team(&mut commands, &asset_server, enemies, Enemy, 300.0);
+}
+fn start_encounter(
+    mut phase: ResMut<State<CombatPhases>>,
+    mut view: ResMut<State<Views>>
+){  
+    view.overwrite_set(Views::Combat).unwrap();
+    phase.overwrite_set(CombatPhases::SelectActive).unwrap();
 }
 
 impl Plugin for CombatPlugin {
@@ -258,7 +296,10 @@ impl Plugin for CombatPlugin {
                 SystemSet::on_update(CombatPhases::SelectAction).with_system(listen_for_input),
             )
             .add_system_set(
-                SystemSet::on_update(CombatPhases::SelectAction).with_system(read_events),
+                SystemSet::on_update(CombatPhases::SelectAction)
+                    .with_system(check_all_acted)
+                    .with_system(check_all_dead)
+                    .with_system(read_events),
             )
             .add_system_set(
                 SystemSet::on_enter(CombatPhases::SelectActive)
@@ -267,10 +308,28 @@ impl Plugin for CombatPlugin {
             )
             .add_system_set(
                 SystemSet::on_update(CombatPhases::SelectActive)
-                    .with_system(move_highlight_to_active),
+                    .with_system(move_highlight_to_active)
+                    .with_system(check_all_acted)
+                    .with_system(check_all_dead),
             )
             .add_system_set(SystemSet::on_enter(CombatPhases::Enemy).with_system(toggle_highlight))
-            .add_system_set(SystemSet::on_update(CombatPhases::Enemy).with_system(do_enemy_turn))
-            .add_system_set(SystemSet::on_exit(CombatPhases::Enemy).with_system(toggle_highlight).with_system(clear_acted));
+            .add_system_set(
+                SystemSet::on_update(CombatPhases::Enemy)
+                    .with_system(do_enemy_turn)
+                    .with_system(check_all_dead),
+            )
+            .add_system_set(
+                SystemSet::on_exit(CombatPhases::Enemy)
+                    .with_system(toggle_highlight)
+                    .with_system(clear_acted),
+            )
+            .add_system_set(SystemSet::on_enter(CombatPhases::EnemyWins).with_system(end_encounter))
+            .add_system_set(SystemSet::on_update(CombatPhases::EnemyWins).with_system(enemy_wins))
+            .add_system_set(
+                SystemSet::on_enter(CombatPhases::PlayerWins).with_system(end_encounter),
+            )
+            .add_system_set(
+                SystemSet::on_update(CombatPhases::PlayerWins).with_system(player_wins),
+            );
     }
 }

@@ -7,4 +7,6 @@ pub enum CombatPhases {
     SelectAction,
     SelectActive,
     Enemy,
+    EnemyWins,
+    PlayerWins,
 }
