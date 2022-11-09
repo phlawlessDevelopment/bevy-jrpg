@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::states::Views;
+use crate::states::{Views, CombatPhases};
 
 pub struct GuiPlugin;
 
@@ -199,12 +199,15 @@ fn teardown_combat() {}
 fn combat_button_events(
     mut buttons_q: Query<(&Interaction, &mut UiColor), (Changed<Interaction>, With<Button>)>,
     buttons: Res<CombatButtons>,
+    mut phase: ResMut<State<CombatPhases>>,
 ) {
     if let Some(button) = buttons.attack {
         if let Ok((interaction, mut color)) = buttons_q.get_mut(button) {
             match interaction {
                 Interaction::Clicked => {
                     *color = PRESSED_BUTTON.into();
+                    if phase.overwrite_set(CombatPhases::SelectTarget).is_ok() {
+                    }
                 }
                 Interaction::Hovered => {
                     *color = HOVERED_BUTTON.into();

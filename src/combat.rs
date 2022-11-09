@@ -8,7 +8,7 @@ use crate::{
     enemy::Enemy,
     player::Player,
     save_load::{load_units, UnitJson},
-    states::{Views, CombatPhases},
+    states::{CombatPhases, Views},
 };
 
 pub struct CombatPlugin;
@@ -145,9 +145,8 @@ fn check_all_dead(
     enemy_units: Query<&AttackSend, (With<Enemy>, Without<Player>)>,
     mut phase: ResMut<State<CombatPhases>>,
 ) {
-    if player_units.iter().len() == 0 && phase.overwrite_set(CombatPhases::EnemyWins).is_ok() {
-    } else if enemy_units.iter().len() == 0 && phase.overwrite_set(CombatPhases::PlayerWins).is_ok() {
-    }
+    if player_units.iter().len() == 0 && phase.overwrite_set(CombatPhases::EnemyWins).is_ok() {}
+    else if enemy_units.iter().len() == 0 && phase.overwrite_set(CombatPhases::PlayerWins).is_ok(){}
 }
 
 fn end_encounter() {
@@ -168,13 +167,14 @@ fn remove_active_unit(mut commands: Commands, active: Query<Entity, With<Active>
     }
 }
 
-fn listen_for_input(
+fn select_target(
     mut combat_event: EventWriter<CombatEvent>,
     windows: Res<Windows>,
     q_camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     enemies: Query<(Entity, &Transform), (With<Enemy>, Without<Active>)>,
     active: Query<Entity, (With<Active>, Without<Enemy>)>,
     buttons: ResMut<Input<MouseButton>>,
+    mut phase: ResMut<State<CombatPhases>>,
 ) {
     if buttons.just_pressed(MouseButton::Left) {
         let _window = windows.get_primary().unwrap();
@@ -199,6 +199,7 @@ fn listen_for_input(
                 if !active.is_empty() {
                     let send = active.single();
                     combat_event.send(CombatEvent { send, receive });
+                    if phase.overwrite_set(CombatPhases::SelectAction).is_ok() {}
                 }
             }
         }
@@ -261,7 +262,7 @@ fn do_enemy_turn(
             combat_event.send(CombatEvent { send, receive });
         }
     }
-    if phase.overwrite_set(CombatPhases::SelectActive).is_ok(){}
+    if phase.overwrite_set(CombatPhases::SelectActive).is_ok() {}
 }
 
 fn spawn_teams(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -271,10 +272,7 @@ fn spawn_teams(mut commands: Commands, asset_server: Res<AssetServer>) {
     let enemies = load_units("assets/encounters/3_pawns.json");
     spawn_team(&mut commands, &asset_server, enemies, Enemy, 300.0);
 }
-fn start_encounter(
-    mut phase: ResMut<State<CombatPhases>>,
-    mut view: ResMut<State<Views>>
-){  
+fn start_encounter(mut phase: ResMut<State<CombatPhases>>, mut view: ResMut<State<Views>>) {
     view.overwrite_set(Views::Combat).unwrap();
     phase.overwrite_set(CombatPhases::SelectActive).unwrap();
 }
@@ -293,7 +291,7 @@ impl Plugin for CombatPlugin {
             )
             .add_startup_system_to_stage("FinalStartup", move_highlight_to_active)
             .add_system_set(
-                SystemSet::on_update(CombatPhases::SelectAction).with_system(listen_for_input),
+                SystemSet::on_update(CombatPhases::SelectTarget).with_system(select_target),
             )
             .add_system_set(
                 SystemSet::on_update(CombatPhases::SelectAction)
